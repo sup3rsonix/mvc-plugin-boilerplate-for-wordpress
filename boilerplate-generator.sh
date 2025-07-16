@@ -53,18 +53,10 @@ create_dir(){
 
 }
 
-download_original_plugin(){
-    echo 'Downloading vanilla boilerplate from Git'
-    git clone --single-branch --branch dev https://github.com/sumitpore/mvc-plugin-boilerplate-for-wordpress.git $GIT_REPO_DIR > /dev/null 2>&1
-    echo 'Boilerplate Download Complete'
-}
-
-bring_plugin_outside(){
-    mv $GIT_REPO_DIR/plugin-name $GENERATED_PLUGIN_DIR/
-}
-
-delete_git_repo_dir(){
-    rm -rf $GIT_REPO_DIR
+copy_plugin_template(){
+    echo 'Copying plugin template from current directory'
+    cp -r plugin-name $GENERATED_PLUGIN_DIR/
+    echo 'Template Copy Complete'
 }
 
 switch_to_generated_plugin_dir(){
@@ -89,16 +81,32 @@ replace_text_in_files(){
     fi
 
     if [[ ! -z "$REPLACEMENT_TEXT" ]]; then
-        find . -type f -exec sed -i -e 's/'"$1"'/'"$REPLACEMENT_TEXT"'/g' {} +
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            find . -type f -exec sed -i '' -e 's/'"$1"'/'"$REPLACEMENT_TEXT"'/g' {} +
+        else
+            # Linux and others
+            find . -type f -exec sed -i -e 's/'"$1"'/'"$REPLACEMENT_TEXT"'/g' {} +
+        fi
 
-        # If we are replacing `Plugin Name`, then we have to revert the replacement 
+        # If we are replacing `Plugin Name`, then we have to revert the replacement
         # done in Plugin File header. Otherwise, WP won't be able to recognize the
         # plugin
         if [ "$1" == "Plugin Name" ]; then
-            sed -i -e 's/'"$REPLACEMENT_TEXT:"'/'"$1:"'/g' plugin-name/plugin-name.php
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # macOS
+                sed -i '' -e 's/'"$REPLACEMENT_TEXT:"'/'"$1:"'/g' plugin-name/plugin-name.php
+            else
+                sed -i -e 's/'"$REPLACEMENT_TEXT:"'/'"$1:"'/g' plugin-name/plugin-name.php
+            fi
 
             # Set Plugin Name
-            sed -i -e 's/'"$BOILERPLATE_PLUGIN_NAME"'/'"$REPLACEMENT_TEXT"'/g' plugin-name/plugin-name.php
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # macOS
+                sed -i '' -e 's/'"$BOILERPLATE_PLUGIN_NAME"'/'"$REPLACEMENT_TEXT"'/g' plugin-name/plugin-name.php
+            else
+                sed -i -e 's/'"$BOILERPLATE_PLUGIN_NAME"'/'"$REPLACEMENT_TEXT"'/g' plugin-name/plugin-name.php
+            fi
 
             # Set Plugin Name variable
             PLUGIN_NAME=$REPLACEMENT_TEXT
@@ -121,17 +129,14 @@ rename_files(){
         find . -type f -name "*$1*" | while read FILE ; do
             newfile="$(echo ${FILE} |sed -e 's/'"$1"'/'"$2"'/')" ;
             mv "${FILE}" "${newfile}" ;
-        done 
+        done
     fi
 }
 
 take_consent_to_execute_script
 set_defaults_for_script
 create_dir $GENERATED_PLUGIN_DIR
-create_dir $GIT_REPO_DIR
-download_original_plugin
-bring_plugin_outside
-delete_git_repo_dir
+copy_plugin_template
 switch_to_generated_plugin_dir
 
 echo ''
